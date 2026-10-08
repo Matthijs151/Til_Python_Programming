@@ -1,0 +1,343 @@
+statcode,Gemeentenaam,locations,connectors,fast_connectors
+GM0363,Amsterdam,468,1122,28
+GM0518,'s-Gravenhage,441,816,16
+GM0599,Rotterdam,353,738,15
+GM0344,Utrecht,212,396,10
+GM0394,Haarlemmermeer,162,392,78
+GM0772,Eindhoven,136,242,31
+GM0796,'s-Hertogenbosch,129,219,17
+GM0855,Tilburg,116,232,31
+GM0758,Breda,112,208,24
+GM0034,Almere,101,177,26
+GM0202,Arnhem,100,198,19
+GM0014,Groningen,93,166,14
+GM0200,Apeldoorn,87,208,60
+GM0484,Alphen aan den Rijn,86,141,0
+GM0307,Amersfoort,80,131,10
+GM0546,Leiden,75,131,0
+GM0505,Dordrecht,74,148,18
+GM0392,Haarlem,73,150,28
+GM0193,Zwolle,72,155,34
+GM0356,Nieuwegein,69,148,42
+GM1783,Westland,66,112,3
+GM0637,Zoetermeer,64,113,0
+GM1963,Hoeksche Waard,62,105,12
+GM0503,Delft,59,93,8
+GM0080,Leeuwarden,56,96,21
+GM0228,Ede,56,148,22
+GM0479,Zaanstad,55,91,8
+GM0995,Lelystad,50,168,21
+GM0597,Ridderkerk,49,109,26
+GM0362,Amstelveen,48,75,0
+GM1942,Gooise Meren,47,120,67
+GM0489,Barendrecht,47,92,2
+GM1992,Voorne aan Zee,45,99,10
+GM0361,Alkmaar,44,86,4
+GM1930,Nissewaard,43,130,6
+GM0268,Nijmegen,43,78,14
+GM0537,Katwijk,40,61,0
+GM0203,Barneveld,40,86,23
+GM0355,Zeist,40,58,4
+GM0321,Houten,39,65,0
+GM1904,Stichtse Vecht,39,109,35
+GM0153,Enschede,38,66,17
+GM1924,Goeree-Overflakkee,38,69,8
+GM1980,Dijk en Waard,38,49,0
+GM0502,Capelle aan den IJssel,38,71,1
+GM0402,Hilversum,37,53,0
+GM0794,Helmond,37,53,0
+GM0632,Woerden,36,73,21
+GM1926,Pijnacker-Nootdorp,36,75,21
+GM0453,Velsen,35,49,2
+GM0736,De Ronde Venen,34,47,0
+GM0150,Deventer,34,66,22
+GM0345,Veenendaal,34,61,0
+GM1916,Leidschendam-Voorburg,33,62,0
+GM0603,Rijswijk (ZH.),33,65,18
+GM1900,Súdwest-Fryslân,32,46,3
+GM1982,Land van Cuijk,32,40,8
+GM1581,Utrechtse Heuvelrug,32,46,0
+GM0373,Bergen (NH.),31,47,0
+GM0310,De Bilt,31,58,2
+GM0983,Venlo,31,77,28
+GM0606,Schiedam,31,74,16
+GM1621,Lansingerland,31,43,0
+GM0622,Vlaardingen,30,57,0
+GM0405,Hoorn,30,52,17
+GM0664,Goes,30,70,20
+GM0935,Maastricht,30,74,26
+GM0828,Oss,29,33,2
+GM0448,Texel,29,30,0
+GM0074,Heerenveen,29,60,2
+GM0301,Zutphen,29,41,0
+GM0164,Hengelo (O.),29,61,19
+GM1960,West Betuwe,29,66,25
+GM0267,Nijkerk,28,45,0
+GM1676,Schouwen-Duiveland,28,48,10
+GM1883,Sittard-Geleen,28,47,12
+GM0826,Oosterhout,27,60,24
+GM0748,Bergen op Zoom,27,73,2
+GM0590,Papendrecht,27,42,0
+GM0717,Veere,27,38,0
+GM1978,Molenlanden,27,38,0
+GM0281,Tiel,26,35,1
+GM1674,Roosendaal,26,45,0
+GM0106,Assen,26,50,15
+GM0114,Emmen,26,54,30
+GM0289,Wageningen,25,68,2
+GM0531,Hendrik-Ido-Ambacht,25,49,12
+GM0512,Gorinchem,25,76,36
+GM1961,Vijfheerenlanden,25,62,22
+GM0867,Waalwijk,25,48,4
+GM0296,Wijchen,24,41,2
+GM0613,Albrandswaard,24,51,3
+GM1742,Rijssen-Holten,23,41,6
+GM0342,Soest,23,31,4
+GM0243,Harderwijk,23,44,21
+GM0353,IJsselstein,23,38,2
+GM1708,Steenwijkerland,23,40,14
+GM0984,Venray,22,45,16
+GM0513,Gouda,22,54,24
+GM0299,Zevenaar,22,33,8
+GM1709,Moerdijk,22,56,8
+GM1696,Wijdemeren,22,29,0
+GM0171,Noordoostpolder,21,52,19
+GM0865,Vught,21,32,0
+GM0629,Wassenaar,21,29,0
+GM0753,Best,21,52,24
+GM0441,Schagen,20,46,6
+GM0439,Purmerend,20,37,8
+GM1959,Altena,20,39,13
+GM0141,Almelo,20,32,6
+GM1940,De Fryske Marren,20,23,0
+GM0358,Aalsmeer,19,35,0
+GM0383,Castricum,19,47,9
+GM0957,Roermond,19,51,4
+GM0575,Noordwijk,19,29,4
+GM1525,Teylingen,19,39,18
+GM0090,Smallingerland,19,52,20
+GM0327,Leusden,19,43,12
+GM0312,Bunnik,18,40,17
+GM1991,Maashorst,18,36,12
+GM1771,Geldrop-Mierlo,18,20,0
+GM1948,Meierijstad,18,39,2
+GM0716,Tholen,18,20,1
+GM0777,Etten-Leur,18,28,0
+GM0160,Hardenberg,18,27,4
+GM0262,Lochem,18,28,10
+GM0762,Deurne,18,26,2
+GM0642,Zwijndrecht,18,25,0
+GM1931,Krimpenerwaard,18,25,0
+GM1911,Hollands Kroon,18,43,22
+GM0917,Heerlen,18,35,10
+GM0797,Heusden,17,25,0
+GM0823,Oirschot,17,20,4
+GM1507,Horst aan de Maas,17,37,18
+GM0222,Doetinchem,17,18,0
+GM0569,Nieuwkoop,17,26,0
+GM0302,Nunspeet,17,24,0
+GM0542,Krimpen aan den IJssel,17,25,6
+GM1734,Overbetuwe,16,22,0
+GM0406,Huizen,16,23,0
+GM1859,Berkelland,16,28,8
+GM0297,Zaltbommel,16,45,18
+GM1901,Bodegraven-Reeuwijk,16,25,9
+GM1892,Zuidplas,15,46,23
+GM1969,Westerkwartier,15,26,7
+GM1714,Sluis,15,37,6
+GM0375,Beverwijk,15,21,2
+GM0118,Hoogeveen,15,23,6
+GM0757,Boxtel,15,25,8
+GM0715,Terneuzen,15,25,2
+GM0216,Culemborg,15,23,0
+GM1955,Montferland,15,21,4
+GM1640,Leudal,15,22,4
+GM0285,Voorst,15,29,2
+GM0397,Heemstede,15,19,0
+GM0303,Dronten,14,22,0
+GM0809,Loon op Zand,14,256,0
+GM0385,Edam-Volendam,14,24,0
+GM0377,Bloemendaal,14,16,0
+GM0233,Ermelo,14,19,0
+GM1721,Bernheze,14,18,0
+GM1966,Het Hogeland,14,26,5
+GM0166,Kampen,14,21,6
+GM0610,Sliedrecht,14,26,0
+GM1903,Eijsden-Margraten,13,26,8
+GM0971,Stein (L.),13,37,22
+GM0824,Oisterwijk,13,19,0
+GM0848,Son en Breugel,13,20,0
+GM0861,Veldhoven,13,13,0
+GM1979,Eemsdelta,13,15,0
+GM0437,Ouder-Amstel,13,60,4
+GM0093,Terschelling,13,16,0
+GM0988,Weert,13,33,18
+GM0779,Geertruidenberg,13,25,0
+GM0784,Gilze en Rijen,13,42,0
+GM0820,"Nuenen, Gerwen en Nederwetten",13,13,0
+GM0687,Middelburg (Z.),13,18,4
+GM0556,Maassluis,13,51,0
+GM1842,Midden-Delfland,13,34,18
+GM1731,Midden-Drenthe,13,22,0
+GM0420,Medemblik,13,28,4
+GM0086,Opsterland,13,28,8
+GM0275,Rheden,13,20,0
+GM1884,Kaag en Braassem,13,16,0
+GM0119,Meppel,12,35,6
+GM0163,Hellendoorn,12,15,4
+GM0214,Buren,12,23,0
+GM0627,Waddinxveen,12,19,0
+GM0098,Weststellingwerf,12,108,24
+GM0766,Dongen,12,14,0
+GM1952,Midden-Groningen,12,28,14
+GM1970,Noardeast-Fryslân,12,15,0
+GM0335,Montfoort,12,12,0
+GM0331,Lopik,12,18,0
+GM0274,Renkum,12,15,0
+GM0384,Diemen,12,21,0
+GM1719,Drimmelen,12,14,0
+GM0678,Kapelle,11,19,0
+GM1695,Noord-Beveland,11,20,1
+GM1740,Neder-Betuwe,11,24,10
+GM0399,Heiloo,11,24,0
+GM1894,Peel en Maas,11,12,0
+GM0396,Heemskerk,11,21,9
+GM0400,Den Helder,11,18,0
+GM0626,Voorschoten,11,14,4
+GM0737,Tytsjerksteradiel,11,15,0
+GM1652,Gemert-Bakel,11,19,8
+GM0317,Eemnes,10,21,4
+GM0232,Epe,10,15,2
+GM0451,Uithoorn,10,14,0
+GM0085,Ooststellingwerf,10,16,0
+GM1876,Bronckhorst,10,10,0
+GM1701,Westerveld,10,19,10
+GM0882,Landgraaf,10,12,0
+GM0718,Vlissingen,10,18,6
+GM0252,Heumen,10,19,6
+GM0579,Oegstgeest,10,16,4
+GM1705,Lingewaard,10,14,0
+GM1896,Zwartewaterland,10,14,0
+GM0173,Oldenzaal,10,38,2
+GM1509,Oude IJsselstreek,10,11,0
+GM1655,Halderberge,10,25,16
+GM0308,Baarn,10,12,0
+GM1730,Tynaarlo,9,27,16
+GM0148,Dalfsen,9,10,0
+GM0482,Alblasserdam,9,14,2
+GM0109,Coevorden,9,13,0
+GM0880,Wormerland,9,10,0
+GM0845,Sint-Michielsgestel,9,10,0
+GM0946,Nederweert,9,14,2
+GM0866,Waalre,9,11,0
+GM0213,Brummen,9,15,0
+GM0858,Valkenswaard,9,12,4
+GM0785,Goirle,9,12,2
+GM0638,Zoeterwoude,9,17,0
+GM0209,Beuningen,9,9,0
+GM0770,Eersel,9,21,4
+GM0037,Stadskanaal,9,17,6
+GM0654,Borsele,8,11,4
+GM1773,Olst-Wijhe,8,8,0
+GM1774,Dinkelland,8,22,6
+GM0184,Urk,8,10,0
+GM1949,Waadhoeke,8,9,1
+GM0840,Rucphen,8,19,12
+GM0175,Ommen,8,10,0
+GM1954,Beekdaelen,8,9,0
+GM0851,Steenbergen,8,13,0
+GM1706,Cranendonck,8,9,0
+GM1700,Twenterand,8,14,0
+GM1699,Noordenveld,8,8,0
+GM0703,Reimerswaal,8,12,0
+GM0668,West Maas en Waal,8,8,0
+GM0450,Uitgeest,8,14,0
+GM0269,Oldebroek,8,14,4
+GM0072,Harlingen,7,9,0
+GM0047,Veendam,7,12,0
+GM0340,Rhenen,7,8,0
+GM0147,Borne,7,11,0
+GM1735,Hof van Twente,7,12,0
+GM1728,Bladel,7,7,0
+GM0230,Elburg,7,9,2
+GM0417,Laren (NH.),7,55,26
+GM0226,Duiven,7,31,21
+GM1658,Heeze-Leende,7,8,0
+GM0246,Heerde,7,10,2
+GM0547,Leiderdorp,7,36,29
+GM1681,Borger-Odoorn,7,20,4
+GM0994,Valkenburg aan de Geul,7,19,0
+GM1641,Maasgouw,7,9,0
+GM0873,Woensdrecht,7,13,4
+GM0938,Meerssen,7,7,0
+GM0907,Gennep,7,10,0
+GM0899,Brunssum,7,13,0
+GM1950,Westerwolde,7,9,4
+GM1680,Aa en Hunze,6,9,4
+GM0189,Wierden,6,6,0
+GM0879,Zundert,6,7,0
+GM0888,Beek (L.),6,9,4
+GM0244,Hattem,6,9,0
+GM0376,Blaricum,6,8,0
+GM0351,Woudenberg,6,19,11
+GM0294,Winterswijk,6,6,0
+GM1729,Gulpen-Wittem,6,8,0
+GM0523,Hardinxveld-Giessendam,6,14,4
+GM0273,Putten,6,7,0
+GM1945,Berg en Dal,6,13,0
+GM0553,Lisse,6,9,0
+GM0589,Oudewater,5,6,0
+GM1895,Oldambt,5,19,12
+GM0158,Haaksbergen,5,8,2
+GM0059,Achtkarspelen,5,6,0
+GM0221,Doesburg,5,5,0
+GM0852,Waterland,5,7,0
+GM1669,Roerdalen,5,5,0
+GM0677,Hulst,5,5,0
+GM0755,Boekel,5,5,0
+GM0431,Oostzaan,5,21,14
+GM1711,Echt-Susteren,5,5,0
+GM0279,Scherpenzeel,5,8,0
+GM0060,Ameland,5,10,0
+GM0352,Wijk bij Duurstede,5,5,0
+GM0928,Kerkrade,5,6,0
+GM1659,Laarbeek,5,5,0
+GM0177,Raalte,5,6,0
+GM0180,Staphorst,5,12,6
+GM0050,Zeewolde,4,13,0
+GM0473,Zandvoort,4,5,0
+GM1586,Oost Gelre,4,10,0
+GM0965,Simpelveld,4,4,0
+GM1598,Koggenland,4,7,0
+GM0743,Asten,4,4,0
+GM0532,Stede Broec,4,4,0
+GM0313,Bunschoten,4,5,0
+GM0534,Hillegom,4,6,0
+GM0225,Druten,4,4,0
+GM1690,De Wolden,4,8,4
+GM0197,Aalten,4,5,0
+GM0798,Hilvarenbeek,4,8,0
+GM0847,Someren,4,4,0
+GM0168,Losser,3,5,0
+GM1891,Dantumadiel,3,4,0
+GM0893,Bergen (L.),3,3,0
+GM0986,Voerendaal,3,3,0
+GM0183,Tubbergen,3,4,0
+GM1667,Reusel-De Mierden,3,6,0
+GM0944,Mook en Middelaar,3,3,0
+GM1724,Bergeijk,3,3,0
+GM0339,Renswoude,3,3,0
+GM0263,Maasdriel,3,3,0
+GM0388,Enkhuizen,3,3,0
+GM0096,Vlieland,2,2,0
+GM0889,Beesel,2,2,0
+GM1723,Alphen-Chaam,2,2,0
+GM0744,Baarle-Nassau,2,6,0
+GM0293,Westervoort,2,2,0
+GM0432,Opmeer,2,3,0
+GM0765,Pekela,1,1,0
+GM0088,Schiermonnikoog,1,1,0
+GM0981,Vaals,1,1,0
+GM0415,Landsmeer,1,1,0
+GM0277,Rozendaal,1,2,0
+GM0498,Drechterland,0,0,0
