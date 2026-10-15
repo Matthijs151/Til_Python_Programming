@@ -38,6 +38,8 @@ CBS_NAMES = {
 
 # One hue, very light -> very dark in even steps: a higher value is darker.
 COLORS = ["#e1f4ff", "#aacffd", "#79a9e9", "#5183ce", "#315fab", "#183c84", "#041b5c"]
+# The same steps in green, so the growth maps stand apart from the other maps.
+GROWTH_COLORS = ["#e0fae4", "#aadab1", "#78b982", "#4c9658", "#237432", "#005110", "#003100"]
 NO_DATA_COLOR = "#d6d5d0"
 INK, INK_MUTED, SOURCE_GREY = "#0b0b0b", "#52514e", "#8a8984"
 LABEL_X_M = 45_000    # RD x-coordinate (metres) where the labels end, in the North Sea
@@ -93,11 +95,11 @@ def load_evs(year: int, column: str) -> pd.DataFrame:
 
 
 def plot_map(gdf, column, bins, bin_labels, legend_title, title, label_by, label_n,
-             label_format, source, filename, no_data_label=None):
+             label_format, source, filename, no_data_label=None, palette=COLORS):
     """Choropleth of `column` in classes; names the `label_n` largest `label_by`.
     Municipalities without a value are grey, explained by `no_data_label`."""
     classes = pd.cut(gdf[column], bins, labels=False, right=False)
-    colors = classes.map(dict(enumerate(COLORS))).fillna(NO_DATA_COLOR)
+    colors = classes.map(dict(enumerate(palette))).fillna(NO_DATA_COLOR)
     fig, ax = plt.subplots(figsize=(8, 9))
     # White borders act as a thin gap between neighbouring municipalities.
     gdf.plot(ax=ax, color=colors, edgecolor="white", linewidth=0.3)
@@ -106,7 +108,7 @@ def plot_map(gdf, column, bins, bin_labels, legend_title, title, label_by, label
     add_sea_labels(ax, top, [f"{r['statnaam']} ({r[column]:{label_format}})"
                              for _, r in top.iterrows()])
 
-    handles = [Patch(facecolor=c, label=l) for c, l in zip(COLORS, bin_labels)]
+    handles = [Patch(facecolor=c, label=l) for c, l in zip(palette, bin_labels)]
     if no_data_label:
         handles.append(Patch(facecolor=NO_DATA_COLOR, label=no_data_label))
     legend = ax.legend(handles=handles, title=legend_title, loc="upper left",
@@ -199,7 +201,7 @@ def main() -> None:
              label_by="inhabitants", label_n=4, label_format="+.0%",
              source="Source: charge points per municipality, December 2023 and December "
                     "2025; CBS municipal borders 2025.",
-             filename="charge_points_growth_map.png")
+             filename="charge_points_growth_map.png", palette=GROWTH_COLORS)
 
     reliable = gdf["evs_growth"].notna()
     national = gdf.loc[reliable, "evs"].sum() / gdf.loc[reliable, "evs_2023"].sum() - 1
@@ -214,7 +216,7 @@ def main() -> None:
              no_data_label=f"fewer than {MIN_EVS_2023} electric\ncars in 2023",
              source="Source: CBS, FEV passenger cars of private persons (lease and company "
                     "cars not included),\n1 January 2023 and 2025; CBS municipal borders 2025.",
-             filename="evs_growth_map.png")
+             filename="evs_growth_map.png", palette=GROWTH_COLORS)
 
 
 if __name__ == "__main__":
