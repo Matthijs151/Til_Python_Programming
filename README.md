@@ -31,7 +31,7 @@ The scripts in `src/` are run from the repository root:
 |--------|--------------|
 | `python src/download_municipal_borders.py` | Downloads the 2025 municipal borders (CBS/PDOK) to `data/` |
 | `python src/download_population.py` | Downloads the population per municipality on 1 January 2025 (CBS) to `data/` |
-| `python src/plot_maps.py` | Maps of charge points, charge points per 1,000 inhabitants and EVs per 1,000 inhabitants |
+| `python src/plot_maps.py` | Maps of charge points, charge points and EVs per 1,000 inhabitants, and their growth 2023–2025 |
 | `python src/ev_growth_top10.py` | Bar charts of the 10 municipalities with the largest EV growth, 2022–2025 |
 
 *To be completed for the final report: the steps needed to reproduce the analysis.*
