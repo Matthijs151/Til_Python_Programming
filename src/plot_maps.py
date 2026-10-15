@@ -1,9 +1,13 @@
 """Maps of the Netherlands per municipality:
-1. charge points (2025),
-2. charge points per 1,000 inhabitants (2025),
+1. public charge points (2025),
+2. public charge points per 1,000 inhabitants (2025),
 3. electric passenger cars (FEV) per 1,000 inhabitants (2025),
-4. growth of the number of charge points, 2023-2025,
-5. growth of the number of electric passenger cars, 2023-2025.
+4. growth of the number of public charge points, 2022-2025,
+5. growth of the number of electric passenger cars, 2022-2025.
+
+Public charge points are regular public + regular semi-public + fast (> 50 kW) charge
+points from RVO's 'aantallen laadpunten per gemeente'; private charge points are not
+included.
 
 Needs data/population_2025.csv (from src/download_population.py).
 Run from the repository root:  python src/plot_maps.py
@@ -21,8 +25,11 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
 FIG_DIR = ROOT / "figures"
 
-# Charge points at the end of December; EVs and inhabitants on 1 January.
-CHARGE_POINTS_COLUMN = "aantal laadpunten per gemeente|December {year}"
+FIRST_YEAR, LAST_YEAR = 2022, 2025
+# Charge points per year (end of year); EVs and inhabitants on 1 January.
+CHARGE_POINTS_FILE = "aantallen laadpunten per gemeente - Gemeenten.csv"
+CHARGE_POINTS_COLUMN = "aantallen laadpunten per gemeente|{type}|{year}"
+CHARGE_POINT_TYPES = ["Regulier Publiek", "Regulier Semi-publiek", "Snellaadpunten (>50 kW)"]
 EV_COLUMN = "Aantal personenauto's FEV van natuurlijke personen en gekoppelde rechtspersonen"
 
 # Names in the charge point file that differ from the CBS border names.
@@ -44,8 +51,13 @@ NO_DATA_COLOR = "#d6d5d0"
 INK, INK_MUTED, SOURCE_GREY = "#0b0b0b", "#52514e", "#8a8984"
 LABEL_X_M = 45_000    # RD x-coordinate (metres) where the labels end, in the North Sea
 LABEL_GAP_M = 14_000  # minimum vertical distance between labels
-# With very few EVs in 2023 the growth is meaningless (Vlieland: 0 -> 3).
-MIN_EVS_2023 = 25
+# With very few EVs in the first year the growth is meaningless (Vlieland: 0 -> 3).
+MIN_EVS_FIRST_YEAR = 25
+# Municipalities that merged after 1 January 2022: the EV file of 2022 still lists
+# their parts, so these are added up.
+MERGERS = {"weesp": "amsterdam", "brielle": "voorneaanzee", "hellevoetsluis": "voorneaanzee",
+           "westvoorne": "voorneaanzee", "heerhugowaard": "dijkenwaard",
+           "langedijk": "dijkenwaard"}
 
 
 def name_key(name: str) -> str:
@@ -61,37 +73,44 @@ def load() -> gpd.GeoDataFrame:
 
     population = pd.read_csv(DATA_DIR / "population_2025.csv")
 
-    charge_points = pd.read_csv(DATA_DIR / "charge_points_2023-2025.csv", sep=";")
-    charge_points = pd.DataFrame({
-        "key": charge_points["Gemeenten"].replace(CBS_NAMES).map(name_key),
-        "charge_points": charge_points[CHARGE_POINTS_COLUMN.format(year=2025)],
-        "charge_points_2023": charge_points[CHARGE_POINTS_COLUMN.format(year=2023)],
-    })
-
     gdf = (gdf.merge(population, on="statcode", validate="one_to_one")
-              .merge(charge_points, on="key", validate="one_to_one")
-              .merge(load_evs(2025, "evs"), on="key", validate="one_to_one")
-              .merge(load_evs(2023, "evs_2023"), on="key", validate="one_to_one"))
+              .merge(load_charge_points(), on="key", validate="one_to_one")
+              .merge(load_evs(LAST_YEAR, "evs"), on="key", validate="one_to_one")
+              .merge(load_evs(FIRST_YEAR, "evs_first"), on="key", validate="one_to_one"))
     assert len(gdf) == 342, f"only {len(gdf)} of 342 municipalities matched"
 
     gdf["charge_points_per_1000"] = gdf["charge_points"] / gdf["inhabitants"] * 1000
     gdf["evs_per_1000"] = gdf["evs"] / gdf["inhabitants"] * 1000
     # Growth as a fraction (0.67 = +67%).
-    gdf["charge_points_growth"] = gdf["charge_points"] / gdf["charge_points_2023"] - 1
-    gdf["evs_growth"] = (gdf["evs"] / gdf["evs_2023"] - 1).where(
-        gdf["evs_2023"] >= MIN_EVS_2023)
+    gdf["charge_points_growth"] = gdf["charge_points"] / gdf["charge_points_first"] - 1
+    gdf["evs_growth"] = (gdf["evs"] / gdf["evs_first"] - 1).where(
+        gdf["evs_first"] >= MIN_EVS_FIRST_YEAR)
     return gdf
+
+
+def load_charge_points() -> pd.DataFrame:
+    """Public charge points per municipality: regular public + semi-public + fast."""
+    df = pd.read_csv(DATA_DIR / CHARGE_POINTS_FILE, sep=";")
+    df = df[df["Gemeenten"] != "Totaal"]
+    out = pd.DataFrame({"key": df["Gemeenten"].replace(CBS_NAMES).map(name_key)})
+    for year, column in [(LAST_YEAR, "charge_points"), (FIRST_YEAR, "charge_points_first")]:
+        values = df[[CHARGE_POINTS_COLUMN.format(type=t, year=year) for t in CHARGE_POINT_TYPES]]
+        # An empty cell means no charge points of that type, but some municipalities
+        # (Beek, Hengelo, Laren, Middelburg, Rijswijk, Stein) have no data at all.
+        out[column] = values.sum(axis=1, min_count=1).values
+    return out
 
 
 def load_evs(year: int, column: str) -> pd.DataFrame:
     evs = pd.read_csv(DATA_DIR / f"personenautos_fev_{year}.csv", dtype=str)
     evs.columns = [" ".join(c.split()) for c in evs.columns]  # headers contain line breaks
     evs = evs.dropna(subset=["Gemeentenaam"])
-    return pd.DataFrame({
-        "key": evs["Gemeentenaam"].map(name_key),
+    evs = pd.DataFrame({
+        "key": evs["Gemeentenaam"].map(name_key).replace(MERGERS),
         # Values use a space as thousands separator ("1 678").
         column: pd.to_numeric(evs[EV_COLUMN].str.replace(r"\s", "", regex=True)),
     })
+    return evs.groupby("key", as_index=False).sum()
 
 
 def plot_map(gdf, column, bins, bin_labels, legend_title, title, label_by, label_n,
@@ -150,30 +169,36 @@ def add_sea_labels(ax, rows, texts):
 
 def main() -> None:
     gdf = load()
-    charge_source = "Source: charge points per municipality, December 2025"
-    cbs_source = "CBS population on 1 January 2025; CBS municipal borders 2025."
+    first, last = FIRST_YEAR, LAST_YEAR
+    charge_source = ("Source: RVO, public charge points per municipality (regular public, "
+                     f"semi-public and fast), {last}")
+    cbs_source = f"CBS population on 1 January {last}; CBS municipal borders {last}."
+    has_charge_points = gdf["charge_points"].notna()
+    no_charge_data = f"no data in RVO file\n({(~has_charge_points).sum()} municipalities)"
 
     total = gdf["charge_points"].sum()
     plot_map(gdf, "charge_points",
-             bins=[0, 1000, 2000, 3000, 5000, 10_000, 20_000, float("inf")],
-             bin_labels=["fewer than 1,000", "1,000–2,000", "2,000–3,000", "3,000–5,000",
-                         "5,000–10,000", "10,000–20,000", "20,000 or more"],
-             legend_title="Charge points",
-             title=f"Charge points per municipality, December 2025\n"
+             bins=[0, 100, 200, 300, 500, 1000, 5000, float("inf")],
+             bin_labels=["fewer than 100", "100–200", "200–300", "300–500", "500–1,000",
+                         "1,000–5,000", "5,000 or more"],
+             legend_title="Public charge points",
+             title=f"Public charge points per municipality, {last}\n"
                    f"Netherlands total: {total:,.0f}",
              label_by="charge_points", label_n=5, label_format=",.0f",
-             source=f"{charge_source}; CBS municipal borders 2025.",
+             no_data_label=no_charge_data,
+             source=f"{charge_source}; CBS municipal borders {last}.",
              filename="charge_points_map.png")
 
-    national = total / gdf["inhabitants"].sum() * 1000
+    national = total / gdf.loc[has_charge_points, "inhabitants"].sum() * 1000
     plot_map(gdf, "charge_points_per_1000",
-             bins=[0, 50, 60, 70, 80, 90, 100, float("inf")],
-             bin_labels=["fewer than 50", "50–60", "60–70", "70–80", "80–90", "90–100",
-                         "100 or more"],
-             legend_title="Charge points\nper 1,000 inhabitants",
-             title=f"Charge points per 1,000 inhabitants, 2025\n"
-                   f"Netherlands overall: {national:.0f}",
-             label_by="inhabitants", label_n=4, label_format=".0f",
+             bins=[0, 5, 7.5, 10, 12.5, 15, 20, float("inf")],
+             bin_labels=["fewer than 5", "5–7.5", "7.5–10", "10–12.5", "12.5–15", "15–20",
+                         "20 or more"],
+             legend_title="Public charge points\nper 1,000 inhabitants",
+             title=f"Public charge points per 1,000 inhabitants, {last}\n"
+                   f"Netherlands overall: {national:.1f}",
+             label_by="inhabitants", label_n=4, label_format=".1f",
+             no_data_label=no_charge_data,
              source=f"{charge_source};\n{cbs_source}",
              filename="charge_points_per_1000_inhabitants_map.png")
 
@@ -190,32 +215,34 @@ def main() -> None:
                     f"cars not included);\n{cbs_source}",
              filename="evs_per_1000_inhabitants_map.png")
 
-    national = gdf["charge_points"].sum() / gdf["charge_points_2023"].sum() - 1
+    national = gdf["charge_points"].sum() / gdf["charge_points_first"].sum() - 1
     plot_map(gdf, "charge_points_growth",
-             bins=[0, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, float("inf")],
-             bin_labels=["less than +50%", "+50–60%", "+60–70%", "+70–80%", "+80–90%",
-                         "+90–100%", "+100% or more (doubled)"],
-             legend_title="Growth in charge points\nDecember 2023 → December 2025",
-             title="Growth in charge points per municipality, 2023–2025\n"
+             bins=[float("-inf"), 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, float("inf")],
+             bin_labels=["less than +75%", "+75–100%", "+100–150%", "+150–200%",
+                         "+200–300%", "+300–400%", "+400% or more"],
+             legend_title=f"Growth in public charge points\n{first} → {last}",
+             title=f"Growth in public charge points per municipality, {first}–{last}\n"
                    f"Netherlands overall: {national:+.0%}",
              label_by="inhabitants", label_n=4, label_format="+.0%",
-             source="Source: charge points per municipality, December 2023 and December "
-                    "2025; CBS municipal borders 2025.",
+             no_data_label=no_charge_data,
+             source="Source: RVO, public charge points per municipality (regular public, "
+                    f"semi-public and fast),\n{first} and {last}; CBS municipal borders {last}.",
              filename="charge_points_growth_map.png", palette=GROWTH_COLORS)
 
     reliable = gdf["evs_growth"].notna()
-    national = gdf.loc[reliable, "evs"].sum() / gdf.loc[reliable, "evs_2023"].sum() - 1
+    national = gdf.loc[reliable, "evs"].sum() / gdf.loc[reliable, "evs_first"].sum() - 1
     plot_map(gdf, "evs_growth",
-             bins=[0, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, float("inf")],
-             bin_labels=["less than +60%", "+60–70%", "+70–80%", "+80–90%", "+90–100%",
-                         "+100–110%", "+110% or more"],
-             legend_title="Growth in electric cars\n1 January 2023 → 1 January 2025",
-             title="Growth in electric passenger cars per municipality, 2023–2025\n"
+             bins=[0, 1.5, 1.75, 2.0, 2.25, 2.5, 3.0, float("inf")],
+             bin_labels=["less than +150%", "+150–175%", "+175–200%", "+200–225%",
+                         "+225–250%", "+250–300%", "+300% or more"],
+             legend_title=f"Growth in electric cars\n1 January {first} → 1 January {last}",
+             title=f"Growth in electric passenger cars per municipality, {first}–{last}\n"
                    f"Netherlands overall: {national:+.0%}",
              label_by="inhabitants", label_n=4, label_format="+.0%",
-             no_data_label=f"fewer than {MIN_EVS_2023} electric\ncars in 2023",
+             no_data_label=f"fewer than {MIN_EVS_FIRST_YEAR} electric\ncars in {first}",
              source="Source: CBS, FEV passenger cars of private persons (lease and company "
-                    "cars not included),\n1 January 2023 and 2025; CBS municipal borders 2025.",
+                    f"cars not included),\n1 January {first} and {last}; "
+                    f"CBS municipal borders {last}.",
              filename="evs_growth_map.png", palette=GROWTH_COLORS)
 
 
