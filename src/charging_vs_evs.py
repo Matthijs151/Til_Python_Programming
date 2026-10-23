@@ -1,10 +1,15 @@
 """Compare public charge points with electric passenger cars per municipality
 (sub-question 3 of the final report):
-1. EVs per public charge point in 2025 and its change since 2022 (maps),
+1. EVs per public charge point at the end of 2024 and its change since the end of 2022
+   (maps),
 2. trend line of the increase in charge points against the increase in EVs, both per
    1,000 inhabitants, and a map of municipalities with more or fewer new charge points
    than the trend line,
-3. EVs per public charge point by population density.
+3. EVs per public charge point by population density, end of 2022-2024.
+
+Charge points are counted in December and EVs on 1 January, so the charge points of
+December 2022 are compared with the EVs of 1 January 2023, and so on: both describe
+the end of 2022.
 
 Prints the tables used in the report and saves the figures in figures/.
 Needs data/population_2025.csv (from src/download_population.py).
@@ -14,27 +19,37 @@ Run from the repository root:  python src/charging_vs_evs.py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.ticker import FuncFormatter
 
 import plot_maps
-from plot_maps import BLUE, COLORS, DATA_DIR, INK, INK_MUTED, SOURCE_GREY
+from plot_maps import BLUE, COLORS, DATA_DIR, INK, INK_MUTED, MIN_EVS_FIRST_YEAR, SOURCE_GREY
 
-FIRST, LAST = plot_maps.FIRST_YEAR, plot_maps.LAST_YEAR
-LIGHT_BLUE = COLORS[1]
+# Years of the charge point counts (December); the EVs are those of 1 January a year later.
+YEARS = [2022, 2023, 2024]
+FIRST, LAST = YEARS[0], YEARS[-1]
+PERIOD = f"end of {FIRST} → end of {LAST}"
 # Diverging palettes: blue = enough charge points, red = too few.
 CHANGE_COLORS = ["#2166ac", "#67a9cf", "#d1e5f0", "#fddbc7", "#f4a582", "#d6604d", "#b2182b"]
 TREND_COLORS = ["#b2182b", "#f4a582", "#f2f2f0", "#92c5de", "#2166ac"]
-TREND_BINS = [0, 0.5, 0.8, 1.25, 2, np.inf]
-SOURCE = (f"Source: RVO, public charge points per municipality, {FIRST} and {LAST}; CBS, "
-          f"{plot_maps.EV_DESCRIPTION},\n1 January {FIRST} and {LAST}.")
-NO_DATA = f"no charge point data or\nfewer than {plot_maps.MIN_EVS_FIRST_YEAR} EVs in {FIRST}"
+# Below 0: the municipality has fewer charge points than before.
+TREND_BINS = [-np.inf, 0.5, 0.8, 1.25, 2, np.inf]
+SOURCE = (f"Source: RVO, public charge points per municipality, December {FIRST}–{LAST}; CBS, "
+          f"{plot_maps.EV_DESCRIPTION},\n1 January {FIRST + 1}–{LAST + 1}.")
+NO_DATA = f"no charge point data or fewer\nthan {MIN_EVS_FIRST_YEAR} EVs at the end of {FIRST}"
 DENSITY_GROUPS = ["least dense 25%", "2nd quarter", "3rd quarter", "most dense 25%"]
+# One hue from light to dark: the denser the group, the darker its line.
+DENSITY_COLORS = [COLORS[2], COLORS[3], COLORS[5], COLORS[6]]
 
 
 def load() -> tuple[pd.DataFrame, pd.DataFrame]:
     """All municipalities, and the analysis set: municipalities with charge point data
-    and at least 25 EVs in 2022."""
-    gdf = plot_maps.load()
+    and at least 25 EVs at the end of the first year."""
+    gdf = plot_maps.load()[["statnaam", "key", "inhabitants", "geometry"]]
+    for year in YEARS:
+        gdf = (gdf.merge(plot_maps.load_charge_points(year, f"cp_{year}"), on="key",
+                         validate="one_to_one")
+                  .merge(plot_maps.load_evs(year + 1, f"evs_{year}"), on="key",
+                         validate="one_to_one"))
+        gdf[f"evs_per_cp_{year}"] = gdf[f"evs_{year}"] / gdf[f"cp_{year}"]
 
     density = pd.read_csv(DATA_DIR / "Bevolkingsdichtheid, 2025 ().csv", sep=";",
                           encoding="utf-8-sig")
@@ -42,17 +57,32 @@ def load() -> tuple[pd.DataFrame, pd.DataFrame]:
                             "density": plot_maps.to_number(density["Inwoners per km² land"])})
     gdf = gdf.merge(density, on="key", how="left", validate="one_to_one")
 
-    gdf["evs_per_cp_first"] = gdf["evs_first"] / gdf["charge_points_first"]
-    gdf["evs_per_cp"] = gdf["evs"] / gdf["charge_points"]
-    gdf["evs_per_cp_change"] = gdf["evs_per_cp"] / gdf["evs_per_cp_first"] - 1
-    gdf["ev_increase"] = gdf["evs"] - gdf["evs_first"]
-    gdf["cp_increase"] = gdf["charge_points"] - gdf["charge_points_first"]
+    gdf["evs_per_cp_change"] = gdf[f"evs_per_cp_{LAST}"] / gdf[f"evs_per_cp_{FIRST}"] - 1
+    gdf["ev_growth"] = gdf[f"evs_{LAST}"] / gdf[f"evs_{FIRST}"] - 1
+    gdf["cp_growth"] = gdf[f"cp_{LAST}"] / gdf[f"cp_{FIRST}"] - 1
+    gdf["ev_increase"] = gdf[f"evs_{LAST}"] - gdf[f"evs_{FIRST}"]
+    gdf["cp_increase"] = gdf[f"cp_{LAST}"] - gdf[f"cp_{FIRST}"]
+    # Inhabitants on 1 January 2025, the end of the period.
     gdf["ev_increase_per_1000"] = gdf["ev_increase"] / gdf["inhabitants"] * 1000
     gdf["cp_increase_per_1000"] = gdf["cp_increase"] / gdf["inhabitants"] * 1000
 
-    analysis = gdf[gdf["charge_points"].notna() & gdf["evs_growth"].notna()].copy()
+    analysis = gdf[gdf[f"cp_{FIRST}"].notna()
+                   & (gdf[f"evs_{FIRST}"] >= MIN_EVS_FIRST_YEAR)].copy()
     print(f"{len(gdf)} municipalities, {len(analysis)} in the analysis set")
     return gdf, analysis
+
+
+def national_totals(gdf: pd.DataFrame) -> pd.DataFrame:
+    """EVs and public charge points in the Netherlands at the end of each year, over the
+    same municipalities (those with charge point data)."""
+    totals = gdf[gdf[f"cp_{LAST}"].notna()].sum(numeric_only=True)
+    national = pd.DataFrame(
+        {"Electric cars": [totals[f"evs_{year}"] for year in YEARS],
+         "Public charge points": [totals[f"cp_{year}"] for year in YEARS]},
+        index=pd.Index(YEARS, name="End of year"))
+    national["EVs per charge point"] = (national["Electric cars"]
+                                        / national["Public charge points"])
+    return national
 
 
 def map_panel(ax, gdf, values, bins, labels, palette, title):
@@ -79,93 +109,101 @@ def save(fig, filename: str, source: str = SOURCE) -> None:
     plot_maps.save_figure(fig, filename, bbox_inches="tight")
 
 
-def evs_per_charge_point(gdf: pd.DataFrame, analysis: pd.DataFrame) -> None:
-    """Analysis 1: has the number of EVs per public charge point gone up?"""
-    # Both years over the same municipalities: those with charge point data.
-    totals = gdf[gdf["charge_points"].notna()].sum(numeric_only=True)
-    national_first = totals["evs_first"] / totals["charge_points_first"]
-    national_last = totals["evs"] / totals["charge_points"]
-    kept_pace = (analysis["evs_per_cp_change"] <= 0).sum()
-    print(f"\nNetherlands: {national_first:.2f} EVs per public charge point in {FIRST}, "
-          f"{national_last:.2f} in {LAST}")
-    print(f"Charge points kept pace with EVs (ratio did not rise) in {kept_pace} of "
-          f"{len(analysis)} municipalities")
+def extremes(analysis: pd.DataFrame, column: str, columns: dict[str, str],
+             high: str, low: str, n: int = 5) -> pd.DataFrame:
+    """The `n` municipalities with the highest and the lowest `column`, with `columns`
+    selected and renamed for display."""
+    table = pd.concat({high: analysis.nlargest(n, column),
+                       low: analysis.nsmallest(n, column)})
+    return table[list(columns)].rename(columns=columns).droplevel(1)
 
-    cols = ["statnaam", "evs", "charge_points", "evs_per_cp_first", "evs_per_cp",
-            "evs_per_cp_change"]
-    print("\nLargest increase in EVs per charge point (charging fell behind):")
-    print(analysis.nlargest(5, "evs_per_cp_change")[cols].round(2).to_string(index=False))
-    print("\nLargest decrease in EVs per charge point (charging caught up):")
-    print(analysis.nsmallest(5, "evs_per_cp_change")[cols].round(2).to_string(index=False))
 
+def evs_per_charge_point(gdf: pd.DataFrame,
+                         analysis: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Analysis 1: has the number of EVs per public charge point gone up? Returns the
+    national totals per year and the municipalities where the ratio changed most."""
+    national = national_totals(gdf)
+    changed = extremes(analysis, "evs_per_cp_change",
+                       {"statnaam": "Municipality",
+                        f"evs_per_cp_{FIRST}": f"EVs per CP end {FIRST}",
+                        f"evs_per_cp_{LAST}": f"EVs per CP end {LAST}",
+                        "evs_per_cp_change": "Change"},
+                       high="Charging fell behind most", low="Charging caught up most")
+
+    ratio = national["EVs per charge point"]
     fig, axes = plt.subplots(1, 2, figsize=(13, 7.5))
-    map_panel(axes[0], gdf, analysis["evs_per_cp"],
-              bins=[0, 1, 1.5, 2, 2.5, 3, 4, np.inf],
-              labels=["fewer than 1", "1–1.5", "1.5–2", "2–2.5", "2.5–3", "3–4", "4 or more"],
+    map_panel(axes[0], gdf, analysis[f"evs_per_cp_{LAST}"],
+              bins=[0, 1.5, 2, 2.5, 3, 4, 5, np.inf],
+              labels=["fewer than 1.5", "1.5–2", "2–2.5", "2.5–3", "3–4", "4–5", "5 or more"],
               palette=COLORS,
-              title=f"EVs per public charge point, {LAST}\n"
-                    f"Netherlands overall: {national_last:.2f}")
+              title=f"EVs per public charge point, end of {LAST}\n"
+                    f"Netherlands overall: {ratio[LAST]:.2f}")
     map_panel(axes[1], gdf, analysis["evs_per_cp_change"],
               bins=[-np.inf, -0.25, -0.1, 0, 0.1, 0.25, 0.5, np.inf],
               labels=["−25% or more (caught up)", "−25 to −10%", "−10 to 0%", "0 to +10%",
                       "+10 to +25%", "+25 to +50%", "+50% or more (fell behind)"],
               palette=CHANGE_COLORS,
-              title=f"Change in EVs per public charge point, {FIRST}–{LAST}\n"
-                    f"Netherlands overall: {national_first:.2f} → {national_last:.2f}")
+              title=f"Change in EVs per public charge point, {PERIOD}\n"
+                    f"Netherlands overall: {ratio[FIRST]:.2f} → {ratio[LAST]:.2f}")
     save(fig, "evs_per_charge_point_map.png")
+    return national, changed
 
 
-def trend_line(gdf: pd.DataFrame, analysis: pd.DataFrame) -> None:
+def trend_line(gdf: pd.DataFrame,
+               analysis: pd.DataFrame) -> tuple[pd.Series, pd.DataFrame, pd.Series]:
     """Analysis 2: do municipalities with more EV growth also add more charge points?
     Both increases are per 1,000 inhabitants: in absolute numbers both mainly measure the
     size of a municipality. A trend line (linear regression) gives the expected number of
-    new charge points for the EV growth of each municipality."""
+    new charge points for the EV growth of each municipality. Returns the fit, the
+    municipalities furthest from the line and the number of municipalities per class."""
     ev, cp = analysis["ev_increase_per_1000"], analysis["cp_increase_per_1000"]
-    # On log scales, because a few municipalities have much larger increases than the rest.
-    x, y = np.log(ev), np.log(cp)
-    slope, intercept = np.polyfit(x, y, 1)
-    r2 = np.corrcoef(x, y)[0, 1] ** 2
-    r2_absolute = np.corrcoef(np.log(analysis["ev_increase"]),
-                              np.log(analysis["cp_increase"]))[0, 1] ** 2
-    print(f"\nTrend line per 1,000 inhabitants: slope {slope:.2f}, R² = {r2:.2f} "
-          f"(n = {len(analysis)}); in absolute numbers R² = {r2_absolute:.2f}")
+    slope, intercept = np.polyfit(ev, cp, 1)
+    r2 = np.corrcoef(ev, cp)[0, 1] ** 2
+    fit = pd.Series({
+        "Municipalities": len(analysis),
+        "Slope": slope,
+        "Intercept": intercept,
+        "R² (per 1,000 inhabitants)": r2,
+        "R² (absolute numbers)": np.corrcoef(analysis["ev_increase"],
+                                             analysis["cp_increase"])[0, 1] ** 2,
+        "Expected new CPs per 1,000 inhabitants, lowest": intercept + slope * ev.min(),
+        "Expected new CPs per 1,000 inhabitants, highest": intercept + slope * ev.max(),
+    })
 
     # Actual new charge points as a share of the number expected from the trend line.
-    analysis["vs_trend"] = cp / np.exp(intercept + slope * x)
-    cols = ["statnaam", "ev_increase_per_1000", "cp_increase_per_1000", "vs_trend"]
-    print("\nFewest new charge points compared with the trend line:")
-    print(analysis.nsmallest(5, "vs_trend")[cols].round(2).to_string(index=False))
-    print("\nMost new charge points compared with the trend line:")
-    print(analysis.nlargest(5, "vs_trend")[cols].round(2).to_string(index=False))
-    print("\nMunicipalities per class (actual as a share of expected):")
-    print(pd.cut(analysis["vs_trend"], TREND_BINS, right=False)
-          .value_counts(sort=False).to_string())
+    analysis["vs_trend"] = cp / (intercept + slope * ev)
+    outliers = extremes(analysis, "vs_trend",
+                        {"statnaam": "Municipality",
+                         "ev_increase_per_1000": "New EVs per 1,000 inh.",
+                         "cp_increase_per_1000": "New CPs per 1,000 inh.",
+                         "vs_trend": "Actual / expected"},
+                        high="Most new charge points", low="Fewest new charge points")
+    trend_labels = ["less than half", "50–80%", "about as expected (80–125%)",
+                    "125–200%", "more than twice"]
+    classes = (pd.cut(analysis["vs_trend"], TREND_BINS, right=False, labels=trend_labels)
+               .value_counts(sort=False).rename("Municipalities")
+               .rename_axis("New charge points compared with the trend line"))
 
     fig, ax = plt.subplots(figsize=(8, 5.5))
     ax.scatter(ev, cp, s=16, alpha=0.6, color=BLUE, edgecolor="none")
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    line_x = np.geomspace(ev.min(), ev.max())
-    ax.plot(line_x, np.exp(intercept) * line_x ** slope, color=INK, linewidth=1,
+    line_x = np.array([ev.min(), ev.max()])
+    ax.plot(line_x, intercept + slope * line_x, color=INK, linewidth=1,
             label=f"trend line (R² = {r2:.2f})")
-    outliers = analysis["vs_trend"].nlargest(3).index.union(
+    labelled = analysis["vs_trend"].nlargest(3).index.union(
         analysis["vs_trend"].nsmallest(3).index)
-    # Labels alternately above and below their dot, from left to right, so that
-    # outliers close to each other don't get overlapping labels.
-    for k, i in enumerate(ev[outliers].sort_values().index):
-        above = k % 2 == 0
+    # Labels right of their dot, except when the label just above is also on the right
+    # and close by: then left, so the two labels don't overlap.
+    close = 0.07 * (cp.max() - cp.min())
+    previous_y, previous_right = np.inf, False
+    for i in cp[labelled].sort_values(ascending=False).index:
+        right = not (previous_right and previous_y - cp[i] < close)
+        previous_y, previous_right = cp[i], right
         ax.annotate(analysis.loc[i, "statnaam"], (ev[i], cp[i]), fontsize=8, color=INK_MUTED,
-                    xytext=(4, 3 if above else -3), textcoords="offset points",
-                    va="bottom" if above else "top")
-    # Plain numbers on the log axes instead of powers of ten (6×10⁰).
-    plain = FuncFormatter(lambda value, _: f"{value:g}")
-    ax.xaxis.set_major_formatter(plain)
-    ax.xaxis.set_minor_formatter(plain)
-    ax.yaxis.set_major_formatter(plain)
-    ax.set_xlabel(f"New electric cars per 1,000 inhabitants, {FIRST}–{LAST} (log scale)",
+                    xytext=(5 if right else -5, 0), textcoords="offset points",
+                    ha="left" if right else "right", va="center")
+    ax.set_xlabel(f"New electric cars per 1,000 inhabitants, {PERIOD}", color=INK_MUTED)
+    ax.set_ylabel(f"New public charge points per 1,000 inhabitants,\n{PERIOD}",
                   color=INK_MUTED)
-    ax.set_ylabel(f"New public charge points per 1,000 inhabitants,\n{FIRST}–{LAST} "
-                  "(log scale)", color=INK_MUTED)
     ax.set_title("New public charge points vs new electric cars per 1,000 inhabitants",
                  loc="left", fontsize=12, color=INK)
     ax.legend(frameon=False, loc="upper left", fontsize=9, labelcolor=INK_MUTED)
@@ -173,57 +211,71 @@ def trend_line(gdf: pd.DataFrame, analysis: pd.DataFrame) -> None:
     save(fig, "charge_point_vs_ev_growth.png")
 
     fig, ax = plt.subplots(figsize=(8, 9))
-    map_panel(ax, gdf, analysis["vs_trend"],
-              bins=TREND_BINS,
-              labels=["less than half", "50–80%", "about as expected (80–125%)",
-                      "125–200%", "more than twice"],
+    map_panel(ax, gdf, analysis["vs_trend"], bins=TREND_BINS, labels=trend_labels,
               palette=TREND_COLORS,
-              title=f"New public charge points {FIRST}–{LAST} compared with the trend line\n"
-                    "(actual as a share of the number expected from EV growth,\n"
+              title=f"New public charge points, {PERIOD},\ncompared with the trend line "
+                    "(actual as a share of the number expected\nfrom EV growth, "
                     "both per 1,000 inhabitants)")
     save(fig, "charge_point_growth_vs_trend_map.png")
+    return fit, outliers, classes
 
 
-def by_density(analysis: pd.DataFrame) -> None:
+def by_density(gdf: pd.DataFrame, analysis: pd.DataFrame) -> pd.DataFrame:
     """Analysis 3: are there fewer EVs per charge point in dense municipalities, where
-    fewer people can charge at home?"""
+    fewer people can charge at home? Returns the medians per density group."""
     groups = pd.qcut(analysis["density"], 4, labels=DENSITY_GROUPS)
-    table = analysis.groupby(groups, observed=True).agg(
-        municipalities=("statnaam", "size"),
-        median_density=("density", "median"),
-        ev_growth_pct=("evs_growth", "median"),
-        cp_growth_pct=("charge_points_growth", "median"),
-        evs_per_cp_first=("evs_per_cp_first", "median"),
-        evs_per_cp=("evs_per_cp", "median"),
-    )
-    table[["ev_growth_pct", "cp_growth_pct"]] *= 100
-    print("\nMedians per density group:")
-    print(table.round(2).to_string())
+    table = analysis.groupby(groups, observed=True).agg(**{
+        "Municipalities": ("statnaam", "size"),
+        "Inhabitants per km²": ("density", "median"),
+        "EV growth": ("ev_growth", "median"),
+        "CP growth": ("cp_growth", "median"),
+        **{f"EVs per CP end {year}": (f"evs_per_cp_{year}", "median") for year in YEARS},
+    })
+    table.index.name = "Density group"
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    pos = np.arange(len(table))
-    for offset, column, year, color in [(-0.2, "evs_per_cp_first", FIRST, LIGHT_BLUE),
-                                        (0.2, "evs_per_cp", LAST, BLUE)]:
-        bars = ax.bar(pos + offset, table[column], width=0.4, color=color, label=str(year))
-        ax.bar_label(bars, fmt="%.2f", fontsize=8, color=INK_MUTED, padding=2)
-    ax.set_xticks(pos, [f"{g}\n(~{d:,.0f} inh./km²)"
-                        for g, d in zip(table.index, table["median_density"])], fontsize=9)
-    ax.set_ylabel("Electric cars per public charge point (median)", color=INK_MUTED)
-    ax.set_title("Electric cars per public charge point by population density",
+    end_values = []
+    for (group, row), color in zip(table.iterrows(), DENSITY_COLORS):
+        values = row[[f"EVs per CP end {year}" for year in YEARS]].astype(float).values
+        ax.plot(YEARS, values, color=color, linewidth=2, marker="o", markersize=5,
+                label=f"{group} (~{row['Inhabitants per km²']:,.0f} inh./km²)")
+        end_values.append(values[-1])
+    national = national_totals(gdf)["EVs per charge point"]
+    ax.plot(YEARS, national.values, color=INK, linewidth=1.5, linestyle="--",
+            label="Netherlands overall (all municipalities)")
+    end_values.append(national[LAST])
+    # Values at the end of each line, moved apart where lines end close together.
+    label_y = np.inf
+    for value in sorted(end_values, reverse=True):
+        label_y = min(value, label_y - 0.15)
+        ax.annotate(f"{value:.2f}", (LAST, value), xytext=(LAST + 0.06, label_y),
+                    va="center", fontsize=8, color=INK_MUTED)
+    ax.set_xticks(YEARS, [f"end of {year}" for year in YEARS])
+    ax.set_xlim(FIRST - 0.15, LAST + 0.3)
+    ax.set_ylim(bottom=0)
+    ax.set_ylabel("Electric cars per public charge point", color=INK_MUTED)
+    ax.set_title("Electric cars per public charge point by population density (median)",
                  loc="left", fontsize=12, color=INK)
-    ax.legend(frameon=False, fontsize=9, labelcolor=INK_MUTED)
+    ax.legend(frameon=False, fontsize=8, labelcolor=INK_MUTED, loc="lower left")
     style_axes(ax)
     ax.grid(axis="x", visible=False)
     save(fig, "evs_per_charge_point_by_density.png",
-         source=f"{SOURCE}\nCBS, population density {LAST}. "
+         source=f"{SOURCE}\nCBS, population density {LAST + 1}. "
                 f"Each group holds a quarter of the {len(analysis)} municipalities.")
+    return table
 
 
 def main() -> None:
     gdf, analysis = load()
-    evs_per_charge_point(gdf, analysis)
-    trend_line(gdf, analysis)
-    by_density(analysis)
+    national, changed = evs_per_charge_point(gdf, analysis)
+    kept_pace = (analysis["evs_per_cp_change"] <= 0).sum()
+    print(f"\n{national.round(2).to_string()}\n\nCharge points kept pace with EVs (ratio "
+          f"did not rise) in {kept_pace} of {len(analysis)} municipalities\n")
+    print(changed.round(2).to_string())
+    fit, outliers, classes = trend_line(gdf, analysis)
+    print(f"\n{fit.round(3).to_string()}\n\n{outliers.round(2).to_string()}\n")
+    print(classes.to_string())
+    print(f"\n{by_density(gdf, analysis).round(2).to_string()}")
 
 
 if __name__ == "__main__":
