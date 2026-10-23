@@ -31,6 +31,10 @@ CHARGE_POINTS_FILE = "aantallen laadpunten per gemeente - Gemeenten.csv"
 CHARGE_POINTS_COLUMN = "aantallen laadpunten per gemeente|{type}|{year}"
 CHARGE_POINT_TYPES = ["Regulier Publiek", "Regulier Semi-publiek", "Snellaadpunten (>50 kW)"]
 EV_COLUMN = "Aantal personenauto's FEV van natuurlijke personen en gekoppelde rechtspersonen"
+# What EV_COLUMN counts: cars of private persons and of businesses linked to one person,
+# such as sole proprietorships. Other company cars and lease cars are not included.
+EV_DESCRIPTION = ("FEV passenger cars of private persons and linked businesses "
+                  "(other company and lease cars not included)")
 
 # Names in the charge point file that differ from the CBS border names.
 CBS_NAMES = {
@@ -49,6 +53,7 @@ COLORS = ["#e1f4ff", "#aacffd", "#79a9e9", "#5183ce", "#315fab", "#183c84", "#04
 GROWTH_COLORS = ["#e0fae4", "#aadab1", "#78b982", "#4c9658", "#237432", "#005110", "#003100"]
 NO_DATA_COLOR = "#d6d5d0"
 INK, INK_MUTED, SOURCE_GREY = "#0b0b0b", "#52514e", "#8a8984"
+BLUE = "#2a78d6"  # bars and dots in the charts of the other scripts
 LABEL_X_M = 45_000    # RD x-coordinate (metres) where the labels end, in the North Sea
 LABEL_GAP_M = 14_000  # minimum vertical distance between labels
 # With very few EVs in the first year the growth is meaningless (Vlieland: 0 -> 3).
@@ -101,49 +106,65 @@ def load_charge_points() -> pd.DataFrame:
     return out
 
 
+def read_ev_file(year: int) -> pd.DataFrame:
+    """The CBS file with electric passenger cars per municipality on 1 January `year`."""
+    df = pd.read_csv(DATA_DIR / f"personenautos_fev_{year}.csv", dtype=str)
+    df.columns = [" ".join(c.split()) for c in df.columns]  # headers contain line breaks
+    return df.dropna(subset=["Gemeentenaam"])
+
+
+def to_number(values: pd.Series) -> pd.Series:
+    """CBS files use a space as thousands separator ("1 678")."""
+    return pd.to_numeric(values.str.replace(r"\s", "", regex=True))
+
+
 def load_evs(year: int, column: str) -> pd.DataFrame:
-    evs = pd.read_csv(DATA_DIR / f"personenautos_fev_{year}.csv", dtype=str)
-    evs.columns = [" ".join(c.split()) for c in evs.columns]  # headers contain line breaks
-    evs = evs.dropna(subset=["Gemeentenaam"])
-    evs = pd.DataFrame({
-        "key": evs["Gemeentenaam"].map(name_key).replace(MERGERS),
-        # Values use a space as thousands separator ("1 678").
-        column: pd.to_numeric(evs[EV_COLUMN].str.replace(r"\s", "", regex=True)),
-    })
+    evs = read_ev_file(year)
+    evs = pd.DataFrame({"key": evs["Gemeentenaam"].map(name_key).replace(MERGERS),
+                        column: to_number(evs[EV_COLUMN])})
     return evs.groupby("key", as_index=False).sum()
+
+
+def choropleth(ax, gdf, values, bins, labels, palette, no_data_label=None) -> list[Patch]:
+    """Colour each municipality by the class of `values` (matched on the index of `gdf`);
+    municipalities without a value are grey. Returns the legend entries."""
+    classes = pd.cut(values.reindex(gdf.index), bins, labels=False, right=False)
+    # White borders act as a thin gap between neighbouring municipalities.
+    gdf.plot(ax=ax, color=classes.map(dict(enumerate(palette))).fillna(NO_DATA_COLOR),
+             edgecolor="white", linewidth=0.3)
+    ax.set_axis_off()
+    ax.set_aspect("equal")
+    handles = [Patch(facecolor=c, label=l) for c, l in zip(palette, labels)]
+    if no_data_label:
+        handles.append(Patch(facecolor=NO_DATA_COLOR, label=no_data_label))
+    return handles
+
+
+def save_figure(fig, filename: str, **kwargs) -> None:
+    FIG_DIR.mkdir(exist_ok=True)
+    fig.savefig(FIG_DIR / filename, dpi=200, **kwargs)
+    plt.close(fig)
+    print(f"Saved figure to {FIG_DIR / filename}")
 
 
 def plot_map(gdf, column, bins, bin_labels, legend_title, title, label_by, label_n,
              label_format, source, filename, no_data_label=None, palette=COLORS):
-    """Choropleth of `column` in classes; names the `label_n` largest `label_by`.
+    """Map of `column` in classes; names the `label_n` largest `label_by`.
     Municipalities without a value are grey, explained by `no_data_label`."""
-    classes = pd.cut(gdf[column], bins, labels=False, right=False)
-    colors = classes.map(dict(enumerate(palette))).fillna(NO_DATA_COLOR)
     fig, ax = plt.subplots(figsize=(8, 9))
-    # White borders act as a thin gap between neighbouring municipalities.
-    gdf.plot(ax=ax, color=colors, edgecolor="white", linewidth=0.3)
+    handles = choropleth(ax, gdf, gdf[column], bins, bin_labels, palette, no_data_label)
 
     top = gdf.nlargest(label_n, label_by)
     add_sea_labels(ax, top, [f"{r['statnaam']} ({r[column]:{label_format}})"
                              for _, r in top.iterrows()])
 
-    handles = [Patch(facecolor=c, label=l) for c, l in zip(palette, bin_labels)]
-    if no_data_label:
-        handles.append(Patch(facecolor=NO_DATA_COLOR, label=no_data_label))
     legend = ax.legend(handles=handles, title=legend_title, loc="upper left",
                        frameon=False, fontsize=9, title_fontsize=9, labelcolor=INK_MUTED)
     legend.get_title().set_color(INK_MUTED)
-
     ax.set_title(title, loc="left", fontsize=12, color=INK)
-    ax.set_axis_off()
-    ax.set_aspect("equal")
     fig.text(0.01, 0.01, source, fontsize=8, color=SOURCE_GREY)
     fig.tight_layout(rect=(0.03, 0.04, 1, 1))
-
-    FIG_DIR.mkdir(exist_ok=True)
-    fig.savefig(FIG_DIR / filename, dpi=200)
-    plt.close(fig)
-    print(f"Saved figure to {FIG_DIR / filename}")
+    save_figure(fig, filename)
 
 
 def add_sea_labels(ax, rows, texts):
@@ -211,8 +232,7 @@ def main() -> None:
              title=f"Electric passenger cars per 1,000 inhabitants, 1 January 2025\n"
                    f"Netherlands overall: {national:.0f}",
              label_by="inhabitants", label_n=4, label_format=".0f",
-             source="Source: CBS, FEV passenger cars of private persons (lease and company "
-                    f"cars not included);\n{cbs_source}",
+             source=f"Source: CBS, {EV_DESCRIPTION};\n{cbs_source}",
              filename="evs_per_1000_inhabitants_map.png")
 
     national = gdf["charge_points"].sum() / gdf["charge_points_first"].sum() - 1
@@ -240,8 +260,7 @@ def main() -> None:
                    f"Netherlands overall: {national:+.0%}",
              label_by="inhabitants", label_n=4, label_format="+.0%",
              no_data_label=f"fewer than {MIN_EVS_FIRST_YEAR} electric\ncars in {first}",
-             source="Source: CBS, FEV passenger cars of private persons (lease and company "
-                    f"cars not included),\n1 January {first} and {last}; "
+             source=f"Source: CBS, {EV_DESCRIPTION},\n1 January {first} and {last}; "
                     f"CBS municipal borders {last}.",
              filename="evs_growth_map.png", palette=GROWTH_COLORS)
 
