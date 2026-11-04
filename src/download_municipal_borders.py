@@ -1,4 +1,9 @@
-"""Download the 2025 Dutch municipal borders (CBS/PDOK) and save them in data/."""
+"""Download the 2025 Dutch municipal borders (CBS/PDOK) and save them in
+data/municipal_borders_2025.geojson. The report uses them for all maps. The file is
+already in data/, so this script is only needed to download it again.
+
+Run from the repository root:  python src/download_municipal_borders.py
+"""
 from pathlib import Path
 
 import requests

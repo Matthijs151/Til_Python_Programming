@@ -1,5 +1,10 @@
 """Download the population per municipality on 1 January 2025 (CBS table 03759ned)
-and save it in data/."""
+and save it in data/population_2025.csv. The report uses it to express electric cars and
+charge points per 1,000 inhabitants. The file is already in data/, so this script is only
+needed to download it again.
+
+Run from the repository root:  python src/download_population.py
+"""
 from pathlib import Path
 
 import pandas as pd

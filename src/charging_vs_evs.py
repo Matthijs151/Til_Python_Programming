@@ -5,7 +5,8 @@
 2. trend line of the increase in charge points against the increase in EVs, both per
    1,000 inhabitants, and a map of municipalities with more or fewer new charge points
    than the trend line,
-3. EVs per public charge point by population density, end of 2022-2024.
+3. EVs per public charge point by population density, end of 2022-2024,
+4. a check whether charge points only follow EVs with a delay of one year (tables only).
 
 Charge points are counted in December and EVs on 1 January, so the charge points of
 December 2022 are compared with the EVs of 1 January 2023, and so on: both describe
@@ -27,6 +28,9 @@ from plot_maps import BLUE, COLORS, DATA_DIR, INK, INK_MUTED, MIN_EVS_FIRST_YEAR
 YEARS = [2022, 2023, 2024]
 FIRST, LAST = YEARS[0], YEARS[-1]
 PERIOD = f"end of {FIRST} → end of {LAST}"
+# Charge points can follow EVs with a delay, so a change in EVs per charge point of less
+# than 10% over the period counts as a match, not as a mismatch.
+MATCH_MARGIN = 0.10
 # Diverging palettes: blue = enough charge points, red = too few.
 CHANGE_COLORS = ["#2166ac", "#67a9cf", "#d1e5f0", "#fddbc7", "#f4a582", "#d6604d", "#b2182b"]
 TREND_COLORS = ["#b2182b", "#f4a582", "#f2f2f0", "#92c5de", "#2166ac"]
@@ -265,17 +269,75 @@ def by_density(gdf: pd.DataFrame, analysis: pd.DataFrame) -> pd.DataFrame:
     return table
 
 
+def match_classes(analysis: pd.DataFrame) -> pd.Series:
+    """Number of municipalities where charging fell behind, matched or went ahead, based
+    on the change in EVs per charge point and the margin MATCH_MARGIN."""
+    change = analysis["evs_per_cp_change"]
+    labels = [f"went ahead (fell by more than {MATCH_MARGIN:.0%})",
+              f"match (changed by less than {MATCH_MARGIN:.0%})",
+              f"fell behind (rose by more than {MATCH_MARGIN:.0%})"]
+    return (pd.cut(change, [-np.inf, -MATCH_MARGIN, MATCH_MARGIN, np.inf], labels=labels)
+            .value_counts(sort=False).rename("Municipalities")
+            .rename_axis(f"Change in EVs per charge point, {PERIOD}"))
+
+
+def delay(analysis: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
+    """Analysis 4: is the mismatch only a delay? Residents usually request a public charge
+    point after buying an EV, so charge points can follow EVs a year later. Returns
+    1. trend lines of the new charge points of one year against the new EVs of the same
+       year and of the year before (both per 1,000 inhabitants), and
+    2. whether municipalities that fell behind in the first year caught up in the second."""
+    inhabitants = analysis["inhabitants"] / 1000
+
+    def new_per_1000(prefix: str, year: int) -> pd.Series:
+        return (analysis[f"{prefix}_{year + 1}"] - analysis[f"{prefix}_{year}"]) / inhabitants
+
+    def year_label(year: int) -> str:
+        return f"end of {year} → end of {year + 1}"
+
+    # (new EVs, new charge points) of these periods are compared with each other.
+    comparisons = {
+        f"Same year, {year_label(2022)}": (2022, 2022),
+        f"Same year, {year_label(2023)}": (2023, 2023),
+        f"One year later: EVs {year_label(2022)}, CPs {year_label(2023)}": (2022, 2023),
+    }
+    rows = {}
+    for label, (ev_year, cp_year) in comparisons.items():
+        ev, cp = new_per_1000("evs", ev_year), new_per_1000("cp", cp_year)
+        slope, _ = np.polyfit(ev, cp, 1)
+        rows[label] = {"Slope": slope, "R²": np.corrcoef(ev, cp)[0, 1] ** 2}
+    fits = pd.DataFrame.from_dict(rows, orient="index").rename_axis(
+        "New charge points against new EVs (per 1,000 inhabitants)")
+
+    first = analysis["evs_per_cp_2023"] / analysis["evs_per_cp_2022"] - 1
+    second = analysis["evs_per_cp_2024"] / analysis["evs_per_cp_2023"] - 1
+    fell_behind = first > MATCH_MARGIN
+    catch_up = pd.Series({
+        f"Fell behind in the first year (ratio rose by more than {MATCH_MARGIN:.0%})":
+            fell_behind.sum(),
+        "… of which the ratio went down again in the second year": (second[fell_behind] < 0).sum(),
+        f"… of which it went down by more than {MATCH_MARGIN:.0%}":
+            (second[fell_behind] < -MATCH_MARGIN).sum(),
+        "For comparison: all municipalities where the ratio went down in the second year":
+            (second < 0).sum(),
+    }, name="Municipalities")
+    return fits, catch_up
+
+
 def main() -> None:
     gdf, analysis = load()
     national, changed = evs_per_charge_point(gdf, analysis)
     kept_pace = (analysis["evs_per_cp_change"] <= 0).sum()
     print(f"\n{national.round(2).to_string()}\n\nCharge points kept pace with EVs (ratio "
           f"did not rise) in {kept_pace} of {len(analysis)} municipalities\n")
+    print(f"{match_classes(analysis).to_string()}\n")
     print(changed.round(2).to_string())
     fit, outliers, classes = trend_line(gdf, analysis)
     print(f"\n{fit.round(3).to_string()}\n\n{outliers.round(2).to_string()}\n")
     print(classes.to_string())
     print(f"\n{by_density(gdf, analysis).round(2).to_string()}")
+    fits, catch_up = delay(analysis)
+    print(f"\n{fits.round(3).to_string()}\n\n{catch_up.to_string()}")
 
 
 if __name__ == "__main__":
