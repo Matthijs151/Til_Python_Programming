@@ -10,8 +10,9 @@ combines municipal data on electric passenger cars (CBS) and public charging poi
 
 The analysis maps electric cars and public charging points per municipality, compares their growth
 using the number of electric cars per public charging point, tests whether municipalities where the
-number of electric cars grew more also added more charging points (per 1,000 inhabitants), and compares
-urban and rural municipalities by population density.
+number of electric cars grew more also added more charging points (per 1,000 inhabitants), compares
+urban and rural municipalities by population density, and checks whether charging points only follow
+electric cars with a delay of one year.
 
 The full report, with all code, figures and results, is
 [`Group 12 Final report.ipynb`](Group%2012%20Final%20report.ipynb).
@@ -33,7 +34,7 @@ The full report, with all code, figures and results, is
 | File | What it does |
 |------|--------------|
 | `plot_maps.py` | Loads, cleans and merges all data per municipality; maps for sub-questions 1 and 2 |
-| `charging_vs_evs.py` | Sub-question 3: electric cars per public charging point, trend line and population-density groups |
+| `charging_vs_evs.py` | Sub-question 3: electric cars per public charging point, trend line, population-density groups and the delay check |
 | `ev_growth_top10.py` | Bar charts of the 10 municipalities with the largest growth in electric cars (not used in the report) |
 | `download_population.py` | Downloads the population per municipality on 1 January 2025 (CBS OData API) |
 | `download_municipal_borders.py` | Downloads the 2025 municipal borders (CBS via PDOK) |
