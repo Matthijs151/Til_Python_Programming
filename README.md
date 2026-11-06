@@ -23,7 +23,6 @@ The full report, with all code, figures and results, is
 |------|----------|
 | `Group 12 Final report.ipynb` | Final report: introduction, data, pipeline, results, conclusion, discussion |
 | `Group 12 Project proposal.ipynb`, `.html` | Project proposal and its HTML export |
-| `proposal version 2.ipynb` | Revised version of the proposal |
 | `src/` | Python code used by the report (see below) |
 | `data/` | All datasets used; they are public and included so the analysis runs offline |
 | `figures/` | All figures, made by the code in `src/` |
